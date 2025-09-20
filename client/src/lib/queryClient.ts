@@ -12,10 +12,18 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Extract headers from data if present
+  const { headers: customHeaders, ...bodyData } = (data as any) || {};
+  
+  const headers: Record<string, string> = {
+    ...(Object.keys(bodyData || {}).length > 0 ? { "Content-Type": "application/json" } : {}),
+    ...customHeaders,
+  };
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers,
+    body: Object.keys(bodyData || {}).length > 0 ? JSON.stringify(bodyData) : undefined,
     credentials: "include",
   });
 
