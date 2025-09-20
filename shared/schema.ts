@@ -142,6 +142,8 @@ export const insertDrillSchema = createInsertSchema(drills).pick({
   description: true,
   scheduledDate: true,
   type: true,
+}).extend({
+  scheduledDate: z.coerce.date(),
 });
 
 export const insertCampaignSchema = createInsertSchema(campaigns).pick({
@@ -153,6 +155,19 @@ export const insertCampaignSchema = createInsertSchema(campaigns).pick({
 export const insertEmergencyAlertSchema = createInsertSchema(emergencyAlerts).pick({
   message: true,
   location: true,
+});
+
+// Update schemas for PATCH operations
+export const updateUserSchema = insertUserSchema.partial();
+export const updateNoticeSchema = insertNoticeSchema.partial();
+export const updateCampaignSchema = insertCampaignSchema.partial();
+export const updateChecklistItemSchema = insertChecklistItemSchema.partial().extend({
+  isCompleted: z.boolean().optional(),
+});
+
+// Report status update schema
+export const reportStatusSchema = z.object({
+  status: z.enum(["pending", "reviewed", "resolved"]),
 });
 
 // Types
