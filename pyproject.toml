@@ -1,0 +1,15 @@
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "firebase-admin>=7.1.0",
+    "kivy>=2.3.1",
+    "kivymd>=1.2.0",
+    "pillow>=11.3.0",
+    "plyer>=2.1.0",
+    "pyrebase4>=4.8.0",
+    "python-dateutil>=2.9.0.post0",
+    "requests>=2.32.5",
+]
