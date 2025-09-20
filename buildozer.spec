@@ -10,7 +10,7 @@ package.name = escolasegura
 package.domain = com.escola.seguranca
 
 # (str) Arquivo principal Python
-source.main = main.py
+source.main = main_android.py
 
 # (str) Diretórios de código fonte (onde estão os arquivos .py)
 source.dir = .
@@ -28,7 +28,7 @@ source.exclude_dirs = tests, bin, .buildozer
 version = 1.0
 
 # (list) Dependências do aplicativo
-requirements = python3,kivy,kivymd,firebase-admin,pyrebase4,requests,python-dateutil,pillow,plyer,certifi,charset-normalizer,idna,urllib3
+requirements = python3,kivy,kivymd,requests,python-dateutil,pillow,plyer,certifi,charset-normalizer,idna,urllib3
 
 # (str) Arquitetura suportada (pode ser all, armeabi-v7a, arm64-v8a, x86, x86_64)
 android.archs = arm64-v8a, armeabi-v7a

@@ -7,6 +7,8 @@ Este documento fornece instruções detalhadas para compilar o aplicativo Python
 ### 1. Sistema Linux (Ubuntu/Debian recomendado)
 O Buildozer funciona melhor em sistemas Linux. Para Windows, use WSL2.
 
+⚠️ **IMPORTANTE**: O Buildozer não funciona em ambientes restritos como Replit, GitHub Codespaces, etc. devido a limitações de PTRACE. Use uma máquina Linux local ou uma VM para compilação.
+
 ### 2. Instalar Dependências do Sistema
 ```bash
 sudo apt update
@@ -23,9 +25,11 @@ pip3 install --user buildozer
 pip3 install --user cython==0.29.33
 ```
 
-## Configuração do Firebase
+## Configuração do Firebase (APENAS para versão Desktop)
 
-Antes de compilar, configure suas chaves do Firebase:
+⚠️ **IMPORTANTE**: A versão Android (main_android.py) usa dados locais e NÃO precisa de configuração Firebase.
+
+Para a versão desktop (main.py) com Firebase:
 
 ### 1. Crie o arquivo `.env` na raiz do projeto:
 ```bash
@@ -38,6 +42,8 @@ FIREBASE_API_KEY=sua-api-key
 - Baixe do Console Firebase > Configurações do Projeto > Seus apps
 - Coloque na raiz do projeto
 
+**Para Android**: Pule esta seção - não é necessária!
+
 ## Compilação do APK
 
 ### 1. Clone/baixe o projeto
@@ -46,15 +52,17 @@ git clone <seu-repositorio>
 cd sistema-seguranca-escolar
 ```
 
-### 2. Inicializar o buildozer (apenas primeira vez)
+### 2. Inicializar o buildozer (apenas primeira vez se buildozer.spec não existir)
 ```bash
-buildozer android debug init
+buildozer init
 ```
 
 ### 3. Compilar o APK
 ```bash
 buildozer android debug
 ```
+
+**Nota**: O buildozer usa as dependências definidas em `buildozer.spec`, não em `pyproject.toml`.
 
 O processo pode demorar 30-60 minutos na primeira execução, pois baixa todas as dependências.
 
@@ -74,6 +82,12 @@ adb install bin/escolasegura-1.0-arm64-v8a-debug.apk
 ```
 
 Ou copie manualmente o arquivo APK para o dispositivo e instale.
+
+## Correções Aplicadas
+
+✅ **Dependências corrigidas**: Removidas libs problemáticas do Firebase
+✅ **App Android otimizado**: Criado main_android.py para compilação móvel
+✅ **Configuração buildozer.spec atualizada**: Dependências compatíveis com Android
 
 ## Solução de Problemas Comuns
 
@@ -99,13 +113,34 @@ chmod +x buildozer
 
 ### 4. Erro de dependências Python
 ```bash
-# Instalar dependências localmente
-pip3 install kivy kivymd firebase-admin pyrebase4
+# Instalar dependências localmente (apenas as compatíveis com Android)
+pip3 install kivy kivymd pillow plyer requests python-dateutil
 ```
 
 ### 5. Erro de espaço em disco
 - O processo precisa de pelo menos 10GB livres
 - Limpe o cache: `rm -rf ~/.buildozer`
+
+### 6. Erro PTRACE (ptrace::getregs: ESRCH)
+❌ **Este erro NÃO pode ser corrigido em ambientes restritos** como:
+- Replit, GitHub Codespaces, Docker containers
+- Windows WSL com restrições de segurança
+- Ambientes virtualizados sem privilégios
+
+✅ **Solução obrigatória**: Compilar em máquina Linux física:
+```bash
+# Use Ubuntu 20.04+ ou Debian 11+ com:
+# - Python 3.9+
+# - OpenJDK 11
+# - Android SDK/NDK configurados manualmente
+# - Pelo menos 10GB de espaço livre
+```
+
+**Ambiente testado recomendado:**
+- Ubuntu 22.04 LTS
+- Python 3.11
+- OpenJDK 11
+- 16GB RAM (mínimo 8GB)
 
 ## Customizações
 
@@ -134,32 +169,43 @@ O APK de release precisa ser assinado digitalmente para publicação.
 
 ## Estrutura de Arquivos
 
+### Para compilação Android:
 ```
 sistema-seguranca-escolar/
-├── main.py                 # Aplicativo principal
+├── main_android.py        # Aplicativo principal (Android)
 ├── buildozer.spec         # Configuração do buildozer
-├── .env                   # Variáveis de ambiente (não versionar)
-├── google-services.json   # Config Firebase (não versionar)
 ├── icon.png              # Ícone do app (opcional)
 ├── presplash.png         # Splash screen (opcional)
 └── bin/                  # APKs compilados
 ```
 
+### Para versão desktop (com Firebase):
+```
+sistema-seguranca-escolar/
+├── main.py               # Aplicativo principal (Desktop)
+├── .env                  # Variáveis de ambiente (não versionar)
+├── google-services.json  # Config Firebase (não versionar)  
+└── [outros arquivos...]
+```
+
 ## Funcionalidades do App
 
-✅ **Sistema de Login/Cadastro** - Firebase Auth
+### Versão Android (main_android.py)
+✅ **Sistema de Login/Cadastro** - Dados locais (sem Firebase)
 ✅ **Controle de Permissões** - Por tipo de usuário
 ✅ **Denúncias** - Anônimas ou identificadas
-✅ **Avisos Urgentes** - Com push notifications
+✅ **Avisos** - Lista de avisos da escola
 ✅ **Controle de Visitantes** - Registro entrada/saída
-✅ **Diário de Ocorrências** - Para funcionários
-✅ **Campanhas Educativas** - Gerenciamento pela direção
-✅ **Painel de Vigilância** - Simulação de câmeras
-✅ **Checklist de Segurança** - Verificações diárias
-✅ **Plano de Evacuação** - Instruções de emergência
-✅ **Calendário de Simulados** - Agendamento de treinamentos
-✅ **Sistema de Banimento** - Gerenciamento de usuários
 ✅ **Botão de Emergência** - Alerta rápido
+✅ **Interface Otimizada** - Para dispositivos móveis
+
+### Versão Completa (main.py - apenas para desktop)
+✅ **Todas as funcionalidades Android** +
+✅ **Firebase Auth** - Autenticação online
+✅ **Push Notifications** - Avisos em tempo real
+✅ **Campanhas Educativas** - Gerenciamento avançado
+✅ **Painel de Vigilância** - Simulação de câmeras
+✅ **Relatórios Avançados** - Analytics e estatísticas
 
 ## Tipos de Usuário e Permissões
 
