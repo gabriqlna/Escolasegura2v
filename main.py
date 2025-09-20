@@ -4,6 +4,22 @@ Aplicativo desenvolvido em Python + Kivy com Firebase
 Funcionalidades: Autenticação, Denúncias, Avisos, Vigilância, etc.
 """
 
+import os
+# Configurações para ambiente Replit com VNC
+if not os.environ.get('DISPLAY'):
+    os.environ['DISPLAY'] = ':0'
+
+# Configurar Kivy para usar renderização por software
+os.environ['KIVY_GL_BACKEND'] = 'gl'
+os.environ['KIVY_WINDOW'] = 'sdl2'
+
+# Adicionar configurações para evitar problemas de OpenGL
+import kivy
+kivy.require('2.1.0')
+from kivy.config import Config
+Config.set('graphics', 'multisamples', '0')
+Config.set('graphics', 'vsync', '0')
+
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -36,6 +52,7 @@ import pyrebase
 from datetime import datetime
 import json
 import os
+from kivy.clock import Clock
 
 
 class FirebaseManager:
@@ -68,17 +85,26 @@ class FirebaseManager:
             
             # Inicializar Firebase Admin para Firestore
             if not firebase_admin._apps:
-                cred = credentials.Certificate({
-                    "type": "service_account",
-                    "project_id": os.environ.get("FIREBASE_PROJECT_ID"),
-                    "private_key_id": "dummy",
-                    "private_key": "-----BEGIN PRIVATE KEY-----\ndummy\n-----END PRIVATE KEY-----\n",
-                    "client_email": f"firebase-adminsdk@{os.environ.get('FIREBASE_PROJECT_ID')}.iam.gserviceaccount.com",
-                    "client_id": "dummy",
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token"
-                })
-                firebase_admin.initialize_app(cred)
+                # Tentar usar arquivo de credenciais real primeiro
+                cred_file = "firebase-service-account.json"
+                if os.path.exists(cred_file):
+                    cred = credentials.Certificate(cred_file)
+                    firebase_admin.initialize_app(cred)
+                    print("Firebase Admin inicializado com credenciais do arquivo")
+                else:
+                    # Usar credenciais das variáveis de ambiente se disponível
+                    service_account_key = os.environ.get("FIREBASE_SERVICE_ACCOUNT_KEY")
+                    if service_account_key:
+                        import json
+                        cred_dict = json.loads(service_account_key)
+                        cred = credentials.Certificate(cred_dict)
+                        firebase_admin.initialize_app(cred)
+                        print("Firebase Admin inicializado com credenciais das variáveis de ambiente")
+                    else:
+                        # Fallback para modo básico sem admin
+                        print("Firebase Admin não inicializado - usando apenas Auth básico")
+                        self.db = None
+                        return
             
             self.db = firestore.client()
             print("Firebase inicializado com sucesso!")
@@ -637,20 +663,56 @@ class DashboardScreen(MDScreen):
         if firebase_manager.has_permission('ver_campanhas'):
             menu_items.append(("📚 Campanhas", self.open_campaigns))
             
-        menu_items.append(("📅 Simulados", self.open_drills))
-        menu_items.append(("🛡️ Segurança", self.open_security))
-        menu_items.append(("📊 Relatórios", self.open_reports_admin))
-        menu_items.append(("⚙️ Configurações", self.open_settings))
-        menu_items.append(("🚪 Sair", self.logout))
+        menu_items.append(("Simulados", self.open_drills))
+        menu_items.append(("Segurança", self.open_security))
+        menu_items.append(("Relatórios", self.open_reports_admin))
+        menu_items.append(("Configurações", self.open_settings))
+        menu_items.append(("Sair", self.logout))
+        
+        # Mapeamento de ícones para cada item do menu
+        menu_icons = {
+            "Avisos": "bullhorn",
+            "Denúncias": "file-document", 
+            "Visitantes": "account-group",
+            "Ocorrências": "clipboard-list",
+            "Campanhas": "school",
+            "Simulados": "calendar-clock",
+            "Segurança": "shield-check",
+            "Relatórios": "chart-bar",
+            "Configurações": "cog",
+            "Sair": "logout"
+        }
         
         for item_text, callback in menu_items:
-            btn = MDFlatButton(
-                text=item_text,
+            # Layout horizontal para ícone + texto
+            item_layout = MDBoxLayout(
+                orientation='horizontal',
                 size_hint_y=None,
-                height='40dp',
+                height='45dp',
+                spacing=10,
+                padding=[10, 5, 10, 5]
+            )
+            
+            # Ícone
+            icon = menu_icons.get(item_text, "circle")
+            icon_btn = MDIconButton(
+                icon=icon,
+                theme_icon_color="Primary",
+                size_hint_x=None,
+                width='30dp'
+            )
+            
+            # Botão de texto
+            text_btn = MDFlatButton(
+                text=item_text,
+                size_hint_x=None,
+                width='150dp',
                 on_release=callback
             )
-            menu_layout.add_widget(btn)
+            
+            item_layout.add_widget(icon_btn)
+            item_layout.add_widget(text_btn)
+            menu_layout.add_widget(item_layout)
         
         self.nav_drawer.add_widget(menu_layout)
     
@@ -973,15 +1035,35 @@ class NoticesScreen(MDScreen):
         
         # Avisos de exemplo
         sample_notices = [
-            "🚨 URGENTE: Simulado de evacuação amanhã às 10h",
-            "📢 Reunião de pais - 25/09/2025",
-            "⚠️ Obras no refeitório - funcionamento reduzido",
-            "📚 Nova campanha contra o bullying"
+            {"text": "URGENTE: Simulado de evacuação amanhã às 10h", "icon": "alert-circle", "color": "red"},
+            {"text": "Reunião de pais - 25/09/2025", "icon": "information-outline", "color": "blue"},
+            {"text": "Obras no refeitório - funcionamento reduzido", "icon": "tools", "color": "orange"},
+            {"text": "Nova campanha contra o bullying", "icon": "school", "color": "green"}
         ]
         
         for notice in sample_notices:
-            item = OneLineListItem(text=notice)
-            notices_card.add_widget(item)
+            notice_layout = MDBoxLayout(
+                size_hint_y=None,
+                height='60dp',
+                spacing=10,
+                padding=[10, 5, 10, 5]
+            )
+            
+            # Ícone do aviso
+            notice_icon = MDIconButton(
+                icon=notice["icon"],
+                theme_icon_color="Custom",
+                icon_color=notice["color"],
+                size_hint_x=None,
+                width='40dp'
+            )
+            
+            # Texto do aviso
+            notice_label = MDLabel(text=notice["text"])
+            
+            notice_layout.add_widget(notice_icon)
+            notice_layout.add_widget(notice_label)
+            notices_card.add_widget(notice_layout)
         
         content.add_widget(notices_card)
         layout.add_widget(content)
@@ -1361,15 +1443,34 @@ class CampaignsScreen(MDScreen):
         campaigns_card.add_widget(campaigns_title)
         
         sample_campaigns = [
-            "🛡️ Campanha Anti-Bullying - Setembro 2025",
-            "🚫 Diga Não às Drogas - Mês todo",
-            "🤝 Respeito e Inclusão - Permanente",
-            "🌱 Sustentabilidade na Escola - Outubro"
+            {"text": "Campanha Anti-Bullying - Setembro 2025", "icon": "shield-account"},
+            {"text": "Diga Não às Drogas - Mês todo", "icon": "close-circle-outline"},
+            {"text": "Respeito e Inclusão - Permanente", "icon": "account-heart"},
+            {"text": "Sustentabilidade na Escola - Outubro", "icon": "leaf"}
         ]
         
         for campaign in sample_campaigns:
-            item = OneLineListItem(text=campaign)
-            campaigns_card.add_widget(item)
+            campaign_layout = MDBoxLayout(
+                size_hint_y=None,
+                height='60dp',
+                spacing=10,
+                padding=[10, 5, 10, 5]
+            )
+            
+            # Ícone da campanha
+            campaign_icon = MDIconButton(
+                icon=campaign["icon"],
+                theme_icon_color="Primary",
+                size_hint_x=None,
+                width='40dp'
+            )
+            
+            # Texto da campanha
+            campaign_label = MDLabel(text=campaign["text"])
+            
+            campaign_layout.add_widget(campaign_icon)
+            campaign_layout.add_widget(campaign_label)
+            campaigns_card.add_widget(campaign_layout)
         
         content.add_widget(campaigns_card)
         layout.add_widget(content)
@@ -1447,17 +1548,20 @@ class SecurityScreen(MDScreen):
         nav_layout = MDBoxLayout(size_hint_y=None, height='50dp', spacing=10)
         
         surveillance_btn = MDRaisedButton(
-            text="📹 Vigilância",
+            text="Vigilância",
+            icon="cctv",
             size_hint_x=0.33,
             on_release=lambda x: self.show_surveillance()
         )
         checklist_btn = MDRaisedButton(
-            text="✅ Checklist", 
+            text="Checklist", 
+            icon="checkbox-marked-circle",
             size_hint_x=0.33,
             on_release=lambda x: self.show_checklist()
         )
         evacuation_btn = MDRaisedButton(
-            text="🚪 Evacuação",
+            text="Evacuação",
+            icon="exit-run",
             size_hint_x=0.33,
             on_release=lambda x: self.show_evacuation()
         )
@@ -1502,11 +1606,11 @@ class SecurityScreen(MDScreen):
         
         # Simulação de câmeras
         cameras = [
-            "📹 Câmera 01 - Entrada Principal - Online",
-            "📹 Câmera 02 - Pátio - Online", 
-            "📹 Câmera 03 - Corredor A - Offline",
-            "📹 Câmera 04 - Biblioteca - Online",
-            "📹 Câmera 05 - Quadra - Online"
+            {"name": "Câmera 01 - Entrada Principal", "status": "Online"},
+            {"name": "Câmera 02 - Pátio", "status": "Online"}, 
+            {"name": "Câmera 03 - Corredor A", "status": "Offline"},
+            {"name": "Câmera 04 - Biblioteca", "status": "Online"},
+            {"name": "Câmera 05 - Quadra", "status": "Online"}
         ]
         
         for camera in cameras:
@@ -1516,17 +1620,41 @@ class SecurityScreen(MDScreen):
                 padding=10
             )
             
-            camera_layout = MDBoxLayout()
+            camera_layout = MDBoxLayout(spacing=10)
             
-            status_color = "green" if "Online" in camera else "red"
-            camera_layout.add_widget(MDLabel(text=camera))
-            
-            view_btn = MDIconButton(
-                icon="video",
+            # Ícone da câmera
+            status_color = "green" if camera["status"] == "Online" else "red"
+            camera_icon = MDIconButton(
+                icon="cctv",
                 theme_icon_color="Custom",
                 icon_color=status_color,
+                size_hint_x=None,
+                width='40dp'
+            )
+            
+            # Nome e status
+            info_layout = MDBoxLayout(orientation='vertical', spacing=2)
+            name_label = MDLabel(text=camera["name"], font_style="Body1")
+            status_label = MDLabel(
+                text=camera["status"], 
+                font_style="Caption",
+                theme_text_color="Custom",
+                text_color=[0, 0.7, 0, 1] if camera["status"] == "Online" else [0.7, 0, 0, 1]
+            )
+            info_layout.add_widget(name_label)
+            info_layout.add_widget(status_label)
+            
+            # Botão de visualizar
+            view_btn = MDIconButton(
+                icon="video-outline",
+                theme_icon_color="Primary",
+                size_hint_x=None,
+                width='40dp',
                 on_release=lambda x, cam=camera: self.view_camera(cam)
             )
+            
+            camera_layout.add_widget(camera_icon)
+            camera_layout.add_widget(info_layout)
             camera_layout.add_widget(view_btn)
             
             camera_card.add_widget(camera_layout)
@@ -1834,26 +1962,54 @@ class DrillsScreen(MDScreen):
         
         # Simulados de exemplo
         sample_drills = [
-            "🔥 Simulado de Incêndio - 25/09/2025 às 10:00 - Todo colégio",
-            "🌍 Simulado de Terremoto - 02/10/2025 às 14:30 - Prédio A",
-            "🚨 Evacuação Geral - 15/10/2025 às 09:15 - Todas as unidades",
-            "⚡ Simulado Elétrico - 20/10/2025 às 16:00 - Laboratórios"
+            {"type": "Simulado de Incêndio", "date": "25/09/2025 às 10:00", "location": "Todo colégio", "icon": "fire"},
+            {"type": "Simulado de Terremoto", "date": "02/10/2025 às 14:30", "location": "Prédio A", "icon": "earth"},
+            {"type": "Evacuação Geral", "date": "15/10/2025 às 09:15", "location": "Todas as unidades", "icon": "exit-run"},
+            {"type": "Simulado Elétrico", "date": "20/10/2025 às 16:00", "location": "Laboratórios", "icon": "flash"}
         ]
         
         for drill in sample_drills:
-            drill_layout = MDBoxLayout(size_hint_y=None, height='50dp')
-            drill_layout.add_widget(MDLabel(text=drill, size_hint_x=0.8))
+            drill_card = MDCard(
+                size_hint=(1, None),
+                height='80dp',
+                padding=10,
+                spacing=10
+            )
             
+            drill_layout = MDBoxLayout(spacing=10)
+            
+            # Ícone do tipo de simulado
+            drill_icon = MDIconButton(
+                icon=drill["icon"],
+                theme_icon_color="Primary",
+                size_hint_x=None,
+                width='40dp'
+            )
+            
+            # Informações do simulado
+            info_layout = MDBoxLayout(orientation='vertical', spacing=2)
+            type_label = MDLabel(text=drill["type"], font_style="Body1")
+            date_label = MDLabel(text=f'{drill["date"]} - {drill["location"]}', font_style="Caption")
+            info_layout.add_widget(type_label)
+            info_layout.add_widget(date_label)
+            
+            drill_layout.add_widget(drill_icon)
+            drill_layout.add_widget(info_layout)
+            
+            # Botão de editar (se tiver permissão)
             if firebase_manager.has_permission('cadastrar_campanhas'):
                 edit_btn = MDIconButton(
                     icon="pencil",
                     theme_icon_color="Custom",
                     icon_color="blue",
+                    size_hint_x=None,
+                    width='40dp',
                     on_release=lambda x, d=drill: self.edit_drill(d)
                 )
                 drill_layout.add_widget(edit_btn)
             
-            calendar_card.add_widget(drill_layout)
+            drill_card.add_widget(drill_layout)
+            calendar_card.add_widget(drill_card)
         
         content.add_widget(calendar_card)
         layout.add_widget(content)

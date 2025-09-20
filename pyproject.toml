@@ -9,6 +9,7 @@ dependencies = [
     "kivymd>=1.2.0",
     "pillow>=11.3.0",
     "plyer>=2.1.0",
+    "pyrebase>=3.0.18",
     "pyrebase4>=4.8.0",
     "python-dateutil>=2.9.0.post0",
     "requests>=2.32.5",
