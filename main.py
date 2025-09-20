@@ -636,7 +636,8 @@ class DashboardScreen(MDScreen):
             
         if firebase_manager.has_permission('ver_campanhas'):
             menu_items.append(("📚 Campanhas", self.open_campaigns))
-        
+            
+        menu_items.append(("📅 Simulados", self.open_drills))
         menu_items.append(("🛡️ Segurança", self.open_security))
         menu_items.append(("📊 Relatórios", self.open_reports_admin))
         menu_items.append(("⚙️ Configurações", self.open_settings))
@@ -737,6 +738,11 @@ class DashboardScreen(MDScreen):
     def open_security(self, *args):
         """Abrir tela de segurança"""
         self.manager.current = 'security'
+        self.nav_drawer.set_state("close")
+    
+    def open_drills(self, *args):
+        """Abrir tela de simulados"""
+        self.manager.current = 'drills'
         self.nav_drawer.set_state("close")
     
     def open_reports_admin(self, *args):
@@ -1759,6 +1765,155 @@ class SettingsScreen(MDScreen):
         self.manager.current = 'dashboard'
 
 
+class DrillsScreen(MDScreen):
+    """Tela de Calendário de Simulados"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = 'drills'
+        self.build_screen()
+    
+    def build_screen(self):
+        layout = MDBoxLayout(orientation='vertical')
+        
+        toolbar = MDTopAppBar(
+            title="Calendário de Simulados",
+            left_action_items=[["arrow-left", lambda x: self.go_back()]]
+        )
+        layout.add_widget(toolbar)
+        
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        # Se for direção, mostrar formulário para criar simulado
+        if firebase_manager.has_permission('cadastrar_campanhas'):  # Direção pode criar simulados
+            create_drill_card = MDCard(
+                orientation='vertical',
+                padding=20,
+                spacing=10,
+                size_hint=(1, None),
+                height='350dp'
+            )
+            
+            form_title = MDLabel(text="Agendar Novo Simulado", font_style="H6")
+            
+            self.drill_type = MDTextField(hint_text="Tipo de simulado (incêndio, evacuação, terremoto)")
+            self.drill_date = MDTextField(hint_text="Data (DD/MM/AAAA)")
+            self.drill_time = MDTextField(hint_text="Horário (HH:MM)")
+            self.drill_location = MDTextField(hint_text="Local/Setor")
+            self.drill_description = MDTextField(
+                hint_text="Instruções e observações",
+                multiline=True
+            )
+            
+            create_btn = MDRaisedButton(
+                text="AGENDAR SIMULADO",
+                on_release=self.create_drill
+            )
+            
+            create_drill_card.add_widget(form_title)
+            create_drill_card.add_widget(self.drill_type)
+            create_drill_card.add_widget(self.drill_date)
+            create_drill_card.add_widget(self.drill_time)
+            create_drill_card.add_widget(self.drill_location)
+            create_drill_card.add_widget(self.drill_description)
+            create_drill_card.add_widget(create_btn)
+            
+            content.add_widget(create_drill_card)
+        
+        # Calendário de simulados agendados
+        calendar_card = MDCard(
+            orientation='vertical',
+            padding=15,
+            spacing=10,
+            size_hint=(1, None),
+            height='300dp'
+        )
+        
+        calendar_title = MDLabel(text="Simulados Agendados", font_style="H6")
+        calendar_card.add_widget(calendar_title)
+        
+        # Simulados de exemplo
+        sample_drills = [
+            "🔥 Simulado de Incêndio - 25/09/2025 às 10:00 - Todo colégio",
+            "🌍 Simulado de Terremoto - 02/10/2025 às 14:30 - Prédio A",
+            "🚨 Evacuação Geral - 15/10/2025 às 09:15 - Todas as unidades",
+            "⚡ Simulado Elétrico - 20/10/2025 às 16:00 - Laboratórios"
+        ]
+        
+        for drill in sample_drills:
+            drill_layout = MDBoxLayout(size_hint_y=None, height='50dp')
+            drill_layout.add_widget(MDLabel(text=drill, size_hint_x=0.8))
+            
+            if firebase_manager.has_permission('cadastrar_campanhas'):
+                edit_btn = MDIconButton(
+                    icon="pencil",
+                    theme_icon_color="Custom",
+                    icon_color="blue",
+                    on_release=lambda x, d=drill: self.edit_drill(d)
+                )
+                drill_layout.add_widget(edit_btn)
+            
+            calendar_card.add_widget(drill_layout)
+        
+        content.add_widget(calendar_card)
+        layout.add_widget(content)
+        self.add_widget(layout)
+    
+    def create_drill(self, *args):
+        drill_type = self.drill_type.text.strip()
+        date = self.drill_date.text.strip()
+        time = self.drill_time.text.strip()
+        location = self.drill_location.text.strip()
+        description = self.drill_description.text.strip()
+        
+        if not all([drill_type, date, time, location]):
+            self.show_dialog("Erro", "Preencha todos os campos obrigatórios")
+            return
+        
+        user = firebase_manager.get_current_user()
+        
+        drill_data = {
+            'type': drill_type,
+            'date': date,
+            'time': time,
+            'location': location,
+            'description': description,
+            'created_by': user.get('name', 'Direção') if user else 'Direção',
+            'created_at': datetime.now().isoformat(),
+            'status': 'scheduled'
+        }
+        
+        try:
+            if firebase_manager.db:
+                firebase_manager.db.collection('drills').add(drill_data)
+            
+            # Limpar campos
+            self.drill_type.text = ""
+            self.drill_date.text = ""
+            self.drill_time.text = ""
+            self.drill_location.text = ""
+            self.drill_description.text = ""
+            
+            self.show_dialog("Sucesso", "Simulado agendado com sucesso!")
+            
+        except Exception as e:
+            self.show_dialog("Erro", f"Erro ao agendar simulado: {str(e)}")
+    
+    def edit_drill(self, drill_info):
+        self.show_dialog("Editar", f"Editando: {drill_info}")
+    
+    def show_dialog(self, title, text):
+        dialog = MDDialog(
+            title=title,
+            text=text,
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+    
+    def go_back(self):
+        self.manager.current = 'dashboard'
+
+
 class SchoolSecurityApp(MDApp):
     """Aplicativo Principal"""
     
@@ -1779,6 +1934,7 @@ class SchoolSecurityApp(MDApp):
         sm.add_widget(VisitorsScreen())
         sm.add_widget(IncidentsScreen())
         sm.add_widget(CampaignsScreen())
+        sm.add_widget(DrillsScreen())
         sm.add_widget(SecurityScreen())
         sm.add_widget(SettingsScreen())
         
