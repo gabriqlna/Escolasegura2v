@@ -10,8 +10,10 @@ if not os.environ.get('DISPLAY'):
     os.environ['DISPLAY'] = ':0'
 
 # Configurar Kivy para usar renderização por software
-os.environ['KIVY_GL_BACKEND'] = 'gl'
+os.environ['KIVY_GL_BACKEND'] = 'mock'
 os.environ['KIVY_WINDOW'] = 'sdl2'
+os.environ['MESA_GL_VERSION_OVERRIDE'] = '3.3'
+os.environ['MESA_GLSL_VERSION_OVERRIDE'] = '330'
 
 # Adicionar configurações para evitar problemas de OpenGL
 import kivy
@@ -19,6 +21,10 @@ kivy.require('2.1.0')
 from kivy.config import Config
 Config.set('graphics', 'multisamples', '0')
 Config.set('graphics', 'vsync', '0')
+Config.set('graphics', 'depth', '0')
+Config.set('graphics', 'stencil', '0')
+Config.set('graphics', 'double', '0')
+Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen

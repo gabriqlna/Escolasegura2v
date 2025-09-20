@@ -42,6 +42,10 @@ args = "Python App"
 task = "workflow.run"
 args = "Python App VNC"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Terminal App"
+
 [[workflows.workflow]]
 name = "Python App"
 author = "agent"
@@ -63,6 +67,17 @@ args = "python main.py"
 
 [workflows.workflow.metadata]
 outputType = "vnc"
+
+[[workflows.workflow]]
+name = "Terminal App"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python terminal_app.py"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 integrations = ["firebase_barebones_javascript:1.0.0"]
