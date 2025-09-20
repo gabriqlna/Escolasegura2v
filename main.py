@@ -757,6 +757,1008 @@ class DashboardScreen(MDScreen):
         self.nav_drawer.set_state("close")
 
 
+class ReportsScreen(MDScreen):
+    """Tela de Denúncias"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = 'reports'
+        self.build_screen()
+    
+    def build_screen(self):
+        layout = MDBoxLayout(orientation='vertical')
+        
+        # Toolbar
+        toolbar = MDTopAppBar(
+            title="Denúncias",
+            left_action_items=[["arrow-left", lambda x: self.go_back()]]
+        )
+        layout.add_widget(toolbar)
+        
+        # Conteúdo
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        # Card de nova denúncia
+        new_report_card = MDCard(
+            orientation='vertical',
+            padding=20,
+            spacing=10,
+            size_hint=(1, None),
+            height='300dp'
+        )
+        
+        title_label = MDLabel(text="Nova Denúncia", font_style="H6")
+        
+        self.report_type = MDTextField(
+            hint_text="Tipo da denúncia (bullying, violência, etc.)",
+            multiline=False
+        )
+        
+        self.report_description = MDTextField(
+            hint_text="Descrição detalhada da situação",
+            multiline=True,
+            max_text_length=500
+        )
+        
+        # Switch para denúncia anônima
+        anonymous_layout = MDBoxLayout(size_hint_y=None, height='40dp')
+        anonymous_layout.add_widget(MDLabel(text="Denúncia Anônima", size_hint_x=0.7))
+        self.anonymous_switch = MDSwitch(size_hint_x=0.3)
+        anonymous_layout.add_widget(self.anonymous_switch)
+        
+        submit_btn = MDRaisedButton(
+            text="ENVIAR DENÚNCIA",
+            on_release=self.submit_report
+        )
+        
+        new_report_card.add_widget(title_label)
+        new_report_card.add_widget(self.report_type)
+        new_report_card.add_widget(self.report_description)
+        new_report_card.add_widget(anonymous_layout)
+        new_report_card.add_widget(submit_btn)
+        
+        content.add_widget(new_report_card)
+        
+        # Lista de denúncias (se for direção)
+        if firebase_manager.has_permission('ver_denuncias'):
+            reports_list_card = MDCard(
+                orientation='vertical',
+                padding=15,
+                spacing=10,
+                size_hint=(1, None),
+                height='200dp'
+            )
+            
+            reports_title = MDLabel(text="Denúncias Recebidas", font_style="H6")
+            reports_list_card.add_widget(reports_title)
+            
+            # Lista seria carregada do Firebase
+            sample_reports = [
+                "Bullying no pátio - 15/09/2025",
+                "Vandalismo na biblioteca - 14/09/2025", 
+                "Comportamento inadequado - 13/09/2025"
+            ]
+            
+            for report in sample_reports:
+                item = OneLineListItem(text=report)
+                reports_list_card.add_widget(item)
+            
+            content.add_widget(reports_list_card)
+        
+        layout.add_widget(content)
+        self.add_widget(layout)
+    
+    def submit_report(self, *args):
+        report_type = self.report_type.text.strip()
+        description = self.report_description.text.strip()
+        is_anonymous = self.anonymous_switch.active
+        
+        if not report_type or not description:
+            self.show_dialog("Erro", "Preencha todos os campos obrigatórios")
+            return
+        
+        user = firebase_manager.get_current_user()
+        
+        report_data = {
+            'type': report_type,
+            'description': description,
+            'anonymous': is_anonymous,
+            'reporter': None if is_anonymous else (user.get('name', 'Anônimo') if user else 'Anônimo'),
+            'reporter_email': None if is_anonymous else (user.get('email') if user else None),
+            'timestamp': datetime.now().isoformat(),
+            'status': 'pending'
+        }
+        
+        try:
+            # Salvar no Firestore
+            if firebase_manager.db:
+                firebase_manager.db.collection('reports').add(report_data)
+            
+            # Limpar campos
+            self.report_type.text = ""
+            self.report_description.text = ""
+            self.anonymous_switch.active = False
+            
+            self.show_dialog("Sucesso", "Denúncia enviada com sucesso!")
+            
+        except Exception as e:
+            self.show_dialog("Erro", f"Não foi possível enviar a denúncia: {str(e)}")
+    
+    def show_dialog(self, title, text):
+        dialog = MDDialog(
+            title=title,
+            text=text,
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+    
+    def go_back(self):
+        self.manager.current = 'dashboard'
+
+
+class NoticesScreen(MDScreen):
+    """Tela de Avisos"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = 'notices'
+        self.build_screen()
+    
+    def build_screen(self):
+        layout = MDBoxLayout(orientation='vertical')
+        
+        # Toolbar
+        toolbar = MDTopAppBar(
+            title="Avisos",
+            left_action_items=[["arrow-left", lambda x: self.go_back()]]
+        )
+        layout.add_widget(toolbar)
+        
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        # Se for direção, mostrar formulário para criar aviso
+        if firebase_manager.has_permission('criar_avisos'):
+            create_notice_card = MDCard(
+                orientation='vertical',
+                padding=20,
+                spacing=10,
+                size_hint=(1, None),
+                height='250dp'
+            )
+            
+            create_title = MDLabel(text="Criar Novo Aviso", font_style="H6")
+            
+            self.notice_title = MDTextField(hint_text="Título do aviso")
+            self.notice_content = MDTextField(
+                hint_text="Conteúdo do aviso",
+                multiline=True
+            )
+            
+            # Switch para aviso urgente
+            urgent_layout = MDBoxLayout(size_hint_y=None, height='40dp')
+            urgent_layout.add_widget(MDLabel(text="Aviso Urgente", size_hint_x=0.7))
+            self.urgent_switch = MDSwitch(size_hint_x=0.3)
+            urgent_layout.add_widget(self.urgent_switch)
+            
+            create_btn = MDRaisedButton(
+                text="PUBLICAR AVISO",
+                on_release=self.create_notice
+            )
+            
+            create_notice_card.add_widget(create_title)
+            create_notice_card.add_widget(self.notice_title)
+            create_notice_card.add_widget(self.notice_content)
+            create_notice_card.add_widget(urgent_layout)
+            create_notice_card.add_widget(create_btn)
+            
+            content.add_widget(create_notice_card)
+        
+        # Lista de avisos
+        notices_card = MDCard(
+            orientation='vertical',
+            padding=15,
+            spacing=10,
+            size_hint=(1, None),
+            height='300dp'
+        )
+        
+        notices_title = MDLabel(text="Avisos Recentes", font_style="H6")
+        notices_card.add_widget(notices_title)
+        
+        # Avisos de exemplo
+        sample_notices = [
+            "🚨 URGENTE: Simulado de evacuação amanhã às 10h",
+            "📢 Reunião de pais - 25/09/2025",
+            "⚠️ Obras no refeitório - funcionamento reduzido",
+            "📚 Nova campanha contra o bullying"
+        ]
+        
+        for notice in sample_notices:
+            item = OneLineListItem(text=notice)
+            notices_card.add_widget(item)
+        
+        content.add_widget(notices_card)
+        layout.add_widget(content)
+        self.add_widget(layout)
+    
+    def create_notice(self, *args):
+        title = self.notice_title.text.strip()
+        content = self.notice_content.text.strip()
+        is_urgent = self.urgent_switch.active
+        
+        if not title or not content:
+            self.show_dialog("Erro", "Preencha todos os campos")
+            return
+        
+        user = firebase_manager.get_current_user()
+        
+        notice_data = {
+            'title': title,
+            'content': content,
+            'urgent': is_urgent,
+            'author': user.get('name', 'Administração') if user else 'Administração',
+            'timestamp': datetime.now().isoformat(),
+            'active': True
+        }
+        
+        try:
+            if firebase_manager.db:
+                firebase_manager.db.collection('notices').add(notice_data)
+            
+            # Se for urgente, enviar push notification
+            if is_urgent:
+                # Aqui seria implementado o envio de push notification
+                pass
+            
+            self.notice_title.text = ""
+            self.notice_content.text = ""
+            self.urgent_switch.active = False
+            
+            self.show_dialog("Sucesso", "Aviso publicado com sucesso!")
+            
+        except Exception as e:
+            self.show_dialog("Erro", f"Erro ao publicar aviso: {str(e)}")
+    
+    def show_dialog(self, title, text):
+        dialog = MDDialog(
+            title=title,
+            text=text,
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+    
+    def go_back(self):
+        self.manager.current = 'dashboard'
+
+
+class VisitorsScreen(MDScreen):
+    """Tela de Controle de Visitantes"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = 'visitors'
+        self.build_screen()
+    
+    def build_screen(self):
+        layout = MDBoxLayout(orientation='vertical')
+        
+        toolbar = MDTopAppBar(
+            title="Controle de Visitantes",
+            left_action_items=[["arrow-left", lambda x: self.go_back()]]
+        )
+        layout.add_widget(toolbar)
+        
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        # Formulário de registro
+        register_card = MDCard(
+            orientation='vertical',
+            padding=20,
+            spacing=10,
+            size_hint=(1, None),
+            height='350dp'
+        )
+        
+        form_title = MDLabel(text="Registrar Visitante", font_style="H6")
+        
+        self.visitor_name = MDTextField(hint_text="Nome completo")
+        self.visitor_doc = MDTextField(hint_text="Documento (CPF/RG)")
+        self.visitor_purpose = MDTextField(hint_text="Motivo da visita")
+        self.visitor_destination = MDTextField(hint_text="Local de destino na escola")
+        
+        register_btn = MDRaisedButton(
+            text="REGISTRAR ENTRADA",
+            on_release=self.register_visitor
+        )
+        
+        register_card.add_widget(form_title)
+        register_card.add_widget(self.visitor_name)
+        register_card.add_widget(self.visitor_doc)
+        register_card.add_widget(self.visitor_purpose)
+        register_card.add_widget(self.visitor_destination)
+        register_card.add_widget(register_btn)
+        
+        content.add_widget(register_card)
+        
+        # Lista de visitantes ativos
+        active_visitors_card = MDCard(
+            orientation='vertical',
+            padding=15,
+            spacing=10,
+            size_hint=(1, None),
+            height='200dp'
+        )
+        
+        active_title = MDLabel(text="Visitantes na Escola", font_style="H6")
+        active_visitors_card.add_widget(active_title)
+        
+        # Lista seria carregada do Firebase
+        sample_visitors = [
+            "João Silva - CPF: 123.456.789-00 - 14:30",
+            "Maria Santos - RG: 12.345.678-9 - 15:15"
+        ]
+        
+        for visitor in sample_visitors:
+            visitor_layout = MDBoxLayout(size_hint_y=None, height='40dp')
+            visitor_layout.add_widget(MDLabel(text=visitor, size_hint_x=0.8))
+            
+            checkout_btn = MDIconButton(
+                icon="logout",
+                theme_icon_color="Custom",
+                icon_color="red",
+                on_release=lambda x, v=visitor: self.checkout_visitor(v)
+            )
+            visitor_layout.add_widget(checkout_btn)
+            active_visitors_card.add_widget(visitor_layout)
+        
+        content.add_widget(active_visitors_card)
+        layout.add_widget(content)
+        self.add_widget(layout)
+    
+    def register_visitor(self, *args):
+        name = self.visitor_name.text.strip()
+        document = self.visitor_doc.text.strip()
+        purpose = self.visitor_purpose.text.strip()
+        destination = self.visitor_destination.text.strip()
+        
+        if not all([name, document, purpose, destination]):
+            self.show_dialog("Erro", "Preencha todos os campos")
+            return
+        
+        user = firebase_manager.get_current_user()
+        
+        visitor_data = {
+            'name': name,
+            'document': document,
+            'purpose': purpose,
+            'destination': destination,
+            'check_in': datetime.now().isoformat(),
+            'check_out': None,
+            'registered_by': user.get('name', 'Funcionário') if user else 'Funcionário',
+            'status': 'active'
+        }
+        
+        try:
+            if firebase_manager.db:
+                firebase_manager.db.collection('visitors').add(visitor_data)
+            
+            # Limpar campos
+            self.visitor_name.text = ""
+            self.visitor_doc.text = ""
+            self.visitor_purpose.text = ""
+            self.visitor_destination.text = ""
+            
+            self.show_dialog("Sucesso", "Visitante registrado com sucesso!")
+            
+        except Exception as e:
+            self.show_dialog("Erro", f"Erro ao registrar visitante: {str(e)}")
+    
+    def checkout_visitor(self, visitor_info):
+        # Implementar checkout do visitante
+        self.show_dialog("Saída", f"Registrando saída do visitante")
+    
+    def show_dialog(self, title, text):
+        dialog = MDDialog(
+            title=title,
+            text=text,
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+    
+    def go_back(self):
+        self.manager.current = 'dashboard'
+
+
+class IncidentsScreen(MDScreen):
+    """Tela de Diário de Ocorrências"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = 'incidents'
+        self.build_screen()
+    
+    def build_screen(self):
+        layout = MDBoxLayout(orientation='vertical')
+        
+        toolbar = MDTopAppBar(
+            title="Diário de Ocorrências",
+            left_action_items=[["arrow-left", lambda x: self.go_back()]]
+        )
+        layout.add_widget(toolbar)
+        
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        # Formulário de nova ocorrência
+        new_incident_card = MDCard(
+            orientation='vertical',
+            padding=20,
+            spacing=10,
+            size_hint=(1, None),
+            height='300dp'
+        )
+        
+        form_title = MDLabel(text="Nova Ocorrência", font_style="H6")
+        
+        self.incident_type = MDTextField(hint_text="Tipo de ocorrência")
+        self.incident_location = MDTextField(hint_text="Local da ocorrência")
+        self.incident_description = MDTextField(
+            hint_text="Descrição detalhada",
+            multiline=True
+        )
+        
+        add_btn = MDRaisedButton(
+            text="REGISTRAR OCORRÊNCIA",
+            on_release=self.add_incident
+        )
+        
+        new_incident_card.add_widget(form_title)
+        new_incident_card.add_widget(self.incident_type)
+        new_incident_card.add_widget(self.incident_location)
+        new_incident_card.add_widget(self.incident_description)
+        new_incident_card.add_widget(add_btn)
+        
+        content.add_widget(new_incident_card)
+        
+        # Lista de ocorrências recentes
+        incidents_card = MDCard(
+            orientation='vertical',
+            padding=15,
+            spacing=10,
+            size_hint=(1, None),
+            height='200dp'
+        )
+        
+        incidents_title = MDLabel(text="Ocorrências Recentes", font_style="H6")
+        incidents_card.add_widget(incidents_title)
+        
+        sample_incidents = [
+            "Equipamento danificado - Lab. Informática - 15/09",
+            "Conflito entre alunos - Pátio - 14/09",
+            "Problema elétrico - Sala 201 - 13/09"
+        ]
+        
+        for incident in sample_incidents:
+            item = OneLineListItem(text=incident)
+            incidents_card.add_widget(item)
+        
+        content.add_widget(incidents_card)
+        layout.add_widget(content)
+        self.add_widget(layout)
+    
+    def add_incident(self, *args):
+        incident_type = self.incident_type.text.strip()
+        location = self.incident_location.text.strip()
+        description = self.incident_description.text.strip()
+        
+        if not all([incident_type, location, description]):
+            self.show_dialog("Erro", "Preencha todos os campos")
+            return
+        
+        user = firebase_manager.get_current_user()
+        
+        incident_data = {
+            'type': incident_type,
+            'location': location,
+            'description': description,
+            'timestamp': datetime.now().isoformat(),
+            'reported_by': user.get('name', 'Funcionário') if user else 'Funcionário',
+            'status': 'open'
+        }
+        
+        try:
+            if firebase_manager.db:
+                firebase_manager.db.collection('incidents').add(incident_data)
+            
+            # Limpar campos
+            self.incident_type.text = ""
+            self.incident_location.text = ""
+            self.incident_description.text = ""
+            
+            self.show_dialog("Sucesso", "Ocorrência registrada com sucesso!")
+            
+        except Exception as e:
+            self.show_dialog("Erro", f"Erro ao registrar ocorrência: {str(e)}")
+    
+    def show_dialog(self, title, text):
+        dialog = MDDialog(
+            title=title,
+            text=text,
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+    
+    def go_back(self):
+        self.manager.current = 'dashboard'
+
+
+class CampaignsScreen(MDScreen):
+    """Tela de Campanhas Educativas"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = 'campaigns'
+        self.build_screen()
+    
+    def build_screen(self):
+        layout = MDBoxLayout(orientation='vertical')
+        
+        toolbar = MDTopAppBar(
+            title="Campanhas Educativas",
+            left_action_items=[["arrow-left", lambda x: self.go_back()]]
+        )
+        layout.add_widget(toolbar)
+        
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        # Se for direção, mostrar formulário para criar campanha
+        if firebase_manager.has_permission('cadastrar_campanhas'):
+            create_campaign_card = MDCard(
+                orientation='vertical',
+                padding=20,
+                spacing=10,
+                size_hint=(1, None),
+                height='300dp'
+            )
+            
+            form_title = MDLabel(text="Nova Campanha", font_style="H6")
+            
+            self.campaign_title = MDTextField(hint_text="Título da campanha")
+            self.campaign_description = MDTextField(
+                hint_text="Descrição e objetivos",
+                multiline=True
+            )
+            self.campaign_duration = MDTextField(hint_text="Duração (ex: 1 semana, 1 mês)")
+            
+            create_btn = MDRaisedButton(
+                text="CRIAR CAMPANHA",
+                on_release=self.create_campaign
+            )
+            
+            create_campaign_card.add_widget(form_title)
+            create_campaign_card.add_widget(self.campaign_title)
+            create_campaign_card.add_widget(self.campaign_description)
+            create_campaign_card.add_widget(self.campaign_duration)
+            create_campaign_card.add_widget(create_btn)
+            
+            content.add_widget(create_campaign_card)
+        
+        # Lista de campanhas ativas
+        campaigns_card = MDCard(
+            orientation='vertical',
+            padding=15,
+            spacing=10,
+            size_hint=(1, None),
+            height='300dp'
+        )
+        
+        campaigns_title = MDLabel(text="Campanhas Ativas", font_style="H6")
+        campaigns_card.add_widget(campaigns_title)
+        
+        sample_campaigns = [
+            "🛡️ Campanha Anti-Bullying - Setembro 2025",
+            "🚫 Diga Não às Drogas - Mês todo",
+            "🤝 Respeito e Inclusão - Permanente",
+            "🌱 Sustentabilidade na Escola - Outubro"
+        ]
+        
+        for campaign in sample_campaigns:
+            item = OneLineListItem(text=campaign)
+            campaigns_card.add_widget(item)
+        
+        content.add_widget(campaigns_card)
+        layout.add_widget(content)
+        self.add_widget(layout)
+    
+    def create_campaign(self, *args):
+        title = self.campaign_title.text.strip()
+        description = self.campaign_description.text.strip()
+        duration = self.campaign_duration.text.strip()
+        
+        if not all([title, description, duration]):
+            self.show_dialog("Erro", "Preencha todos os campos")
+            return
+        
+        user = firebase_manager.get_current_user()
+        
+        campaign_data = {
+            'title': title,
+            'description': description,
+            'duration': duration,
+            'created_by': user.get('name', 'Direção') if user else 'Direção',
+            'created_at': datetime.now().isoformat(),
+            'status': 'active'
+        }
+        
+        try:
+            if firebase_manager.db:
+                firebase_manager.db.collection('campaigns').add(campaign_data)
+            
+            self.campaign_title.text = ""
+            self.campaign_description.text = ""
+            self.campaign_duration.text = ""
+            
+            self.show_dialog("Sucesso", "Campanha criada com sucesso!")
+            
+        except Exception as e:
+            self.show_dialog("Erro", f"Erro ao criar campanha: {str(e)}")
+    
+    def show_dialog(self, title, text):
+        dialog = MDDialog(
+            title=title,
+            text=text,
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+    
+    def go_back(self):
+        self.manager.current = 'dashboard'
+
+
+class SecurityScreen(MDScreen):
+    """Tela de Segurança (Painel, Checklist, Evacuação)"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = 'security'
+        self.build_screen()
+    
+    def build_screen(self):
+        from kivymd.uix.tab import MDTabs, MDTabsBase
+        from kivymd.uix.floatlayout import MDFloatLayout
+        
+        layout = MDBoxLayout(orientation='vertical')
+        
+        toolbar = MDTopAppBar(
+            title="Segurança",
+            left_action_items=[["arrow-left", lambda x: self.go_back()]]
+        )
+        layout.add_widget(toolbar)
+        
+        # Usar cards simples ao invés de tabs para evitar problemas de API
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        # Botões para navegar entre seções
+        nav_layout = MDBoxLayout(size_hint_y=None, height='50dp', spacing=10)
+        
+        surveillance_btn = MDRaisedButton(
+            text="📹 Vigilância",
+            size_hint_x=0.33,
+            on_release=lambda x: self.show_surveillance()
+        )
+        checklist_btn = MDRaisedButton(
+            text="✅ Checklist", 
+            size_hint_x=0.33,
+            on_release=lambda x: self.show_checklist()
+        )
+        evacuation_btn = MDRaisedButton(
+            text="🚪 Evacuação",
+            size_hint_x=0.33,
+            on_release=lambda x: self.show_evacuation()
+        )
+        
+        nav_layout.add_widget(surveillance_btn)
+        nav_layout.add_widget(checklist_btn)
+        nav_layout.add_widget(evacuation_btn)
+        
+        content.add_widget(nav_layout)
+        
+        # Área de conteúdo principal
+        self.main_content_area = MDBoxLayout(orientation='vertical')
+        
+        # Mostrar vigilância por padrão
+        self.main_content_area.add_widget(self.create_surveillance_content())
+        
+        content.add_widget(self.main_content_area)
+        
+        layout.add_widget(content)
+        self.add_widget(layout)
+    
+    def show_surveillance(self):
+        """Mostrar conteúdo de vigilância"""
+        self.main_content_area.clear_widgets()
+        self.main_content_area.add_widget(self.create_surveillance_content())
+    
+    def show_checklist(self):
+        """Mostrar conteúdo de checklist"""
+        self.main_content_area.clear_widgets()
+        self.main_content_area.add_widget(self.create_checklist_content())
+    
+    def show_evacuation(self):
+        """Mostrar conteúdo de evacuação"""
+        self.main_content_area.clear_widgets()
+        self.main_content_area.add_widget(self.create_evacuation_content())
+    
+    def create_surveillance_content(self):
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        title = MDLabel(text="Painel de Vigilância", font_style="H6")
+        content.add_widget(title)
+        
+        # Simulação de câmeras
+        cameras = [
+            "📹 Câmera 01 - Entrada Principal - Online",
+            "📹 Câmera 02 - Pátio - Online", 
+            "📹 Câmera 03 - Corredor A - Offline",
+            "📹 Câmera 04 - Biblioteca - Online",
+            "📹 Câmera 05 - Quadra - Online"
+        ]
+        
+        for camera in cameras:
+            camera_card = MDCard(
+                size_hint=(1, None),
+                height='60dp',
+                padding=10
+            )
+            
+            camera_layout = MDBoxLayout()
+            
+            status_color = "green" if "Online" in camera else "red"
+            camera_layout.add_widget(MDLabel(text=camera))
+            
+            view_btn = MDIconButton(
+                icon="video",
+                theme_icon_color="Custom",
+                icon_color=status_color,
+                on_release=lambda x, cam=camera: self.view_camera(cam)
+            )
+            camera_layout.add_widget(view_btn)
+            
+            camera_card.add_widget(camera_layout)
+            content.add_widget(camera_card)
+        
+        return content
+    
+    def create_checklist_content(self):
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        title = MDLabel(text="Checklist de Segurança", font_style="H6")
+        content.add_widget(title)
+        
+        checklist_items = [
+            "Portas de emergência desbloqueadas",
+            "Extintores carregados e acessíveis",
+            "Iluminação de emergência funcionando",
+            "Alarmes testados",
+            "Rotas de evacuação sinalizadas",
+            "Equipamentos de segurança funcionando"
+        ]
+        
+        for item in checklist_items:
+            item_layout = MDBoxLayout(size_hint_y=None, height='50dp')
+            item_layout.add_widget(MDLabel(text=item, size_hint_x=0.7))
+            
+            checkbox = MDSwitch(size_hint_x=0.3)
+            item_layout.add_widget(checkbox)
+            
+            content.add_widget(item_layout)
+        
+        if firebase_manager.has_permission('adicionar_ocorrencias'):
+            save_btn = MDRaisedButton(
+                text="SALVAR CHECKLIST",
+                on_release=self.save_checklist
+            )
+            content.add_widget(save_btn)
+        
+        return content
+    
+    def create_evacuation_content(self):
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        title = MDLabel(text="Plano de Evacuação", font_style="H6")
+        content.add_widget(title)
+        
+        instructions = [
+            "🚨 EM CASO DE EMERGÊNCIA:",
+            "",
+            "1. Mantenha a calma",
+            "2. Siga as rotas sinalizadas",
+            "3. Não use elevadores",
+            "4. Ajude quem precisar",
+            "5. Dirija-se ao ponto de encontro",
+            "",
+            "📍 PONTO DE ENCONTRO:",
+            "Quadra esportiva externa",
+            "",
+            "📞 CONTATOS DE EMERGÊNCIA:",
+            "Bombeiros: 193",
+            "Polícia: 190",
+            "SAMU: 192",
+            "Direção: (11) 99999-9999"
+        ]
+        
+        for instruction in instructions:
+            if instruction.startswith(("🚨", "📍", "📞")):
+                label = MDLabel(text=instruction, font_style="Subtitle1", theme_text_color="Primary")
+            elif instruction == "":
+                label = MDLabel(text="", size_hint_y=None, height='10dp')
+            else:
+                label = MDLabel(text=instruction)
+            
+            content.add_widget(label)
+        
+        return content
+    
+    def view_camera(self, camera_info):
+        self.show_dialog("Visualização", f"Abrindo {camera_info}")
+    
+    def save_checklist(self, *args):
+        self.show_dialog("Sucesso", "Checklist salvo com sucesso!")
+    
+    def show_dialog(self, title, text):
+        dialog = MDDialog(
+            title=title,
+            text=text,
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+    
+    def go_back(self):
+        self.manager.current = 'dashboard'
+
+
+class SettingsScreen(MDScreen):
+    """Tela de Configurações e Sistema de Banimento"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = 'settings'
+        self.build_screen()
+    
+    def build_screen(self):
+        layout = MDBoxLayout(orientation='vertical')
+        
+        toolbar = MDTopAppBar(
+            title="Configurações",
+            left_action_items=[["arrow-left", lambda x: self.go_back()]]
+        )
+        layout.add_widget(toolbar)
+        
+        content = MDBoxLayout(orientation='vertical', padding=20, spacing=15)
+        
+        # Se for direção, mostrar sistema de banimento
+        if firebase_manager.has_permission('banir_usuarios'):
+            ban_system_card = MDCard(
+                orientation='vertical',
+                padding=20,
+                spacing=10,
+                size_hint=(1, None),
+                height='300dp'
+            )
+            
+            ban_title = MDLabel(text="Sistema de Banimento", font_style="H6")
+            
+            # Lista de usuários para banir/desbanir
+            users_list = [
+                {"name": "João Silva", "email": "joao@escola.com", "active": True},
+                {"name": "Maria Santos", "email": "maria@escola.com", "active": False},
+                {"name": "Pedro Lima", "email": "pedro@escola.com", "active": True}
+            ]
+            
+            ban_system_card.add_widget(ban_title)
+            
+            for user in users_list:
+                user_layout = MDBoxLayout(size_hint_y=None, height='40dp')
+                
+                status_text = "Ativo" if user["active"] else "BANIDO"
+                status_color = "Primary" if user["active"] else "Error"
+                
+                user_info = f"{user['name']} - {status_text}"
+                user_layout.add_widget(MDLabel(text=user_info, size_hint_x=0.6))
+                
+                action_text = "Banir" if user["active"] else "Reativar"
+                action_color = "red" if user["active"] else "green"
+                
+                action_btn = MDRaisedButton(
+                    text=action_text,
+                    size_hint_x=0.4,
+                    md_bg_color=action_color,
+                    on_release=lambda x, u=user: self.toggle_user_ban(u)
+                )
+                user_layout.add_widget(action_btn)
+                
+                ban_system_card.add_widget(user_layout)
+            
+            content.add_widget(ban_system_card)
+        
+        # Configurações gerais
+        general_settings_card = MDCard(
+            orientation='vertical',
+            padding=20,
+            spacing=10,
+            size_hint=(1, None),
+            height='200dp'
+        )
+        
+        settings_title = MDLabel(text="Configurações Gerais", font_style="H6")
+        general_settings_card.add_widget(settings_title)
+        
+        # Notificações
+        notif_layout = MDBoxLayout(size_hint_y=None, height='40dp')
+        notif_layout.add_widget(MDLabel(text="Receber Notificações", size_hint_x=0.7))
+        notif_switch = MDSwitch(size_hint_x=0.3, active=True)
+        notif_layout.add_widget(notif_switch)
+        general_settings_card.add_widget(notif_layout)
+        
+        # Modo escuro
+        dark_layout = MDBoxLayout(size_hint_y=None, height='40dp')
+        dark_layout.add_widget(MDLabel(text="Modo Escuro", size_hint_x=0.7))
+        dark_switch = MDSwitch(size_hint_x=0.3)
+        dark_layout.add_widget(dark_switch)
+        general_settings_card.add_widget(dark_layout)
+        
+        content.add_widget(general_settings_card)
+        layout.add_widget(content)
+        self.add_widget(layout)
+    
+    def toggle_user_ban(self, user):
+        action = "reativar" if not user["active"] else "banir"
+        
+        dialog = MDDialog(
+            title="Confirmação",
+            text=f"Você tem certeza que deseja {action} o usuário {user['name']}?",
+            buttons=[
+                MDFlatButton(text="CANCELAR", on_release=lambda x: dialog.dismiss()),
+                MDFlatButton(
+                    text="CONFIRMAR",
+                    on_release=lambda x: self.confirm_user_ban(dialog, user, not user["active"])
+                )
+            ]
+        )
+        dialog.open()
+    
+    def confirm_user_ban(self, dialog, user, new_status):
+        try:
+            # Atualizar no Firebase
+            if firebase_manager.db:
+                # Buscar usuário pelo email e atualizar status
+                users_ref = firebase_manager.db.collection('users').where('email', '==', user['email'])
+                docs = users_ref.get()
+                
+                for doc in docs:
+                    doc.reference.update({'active': new_status})
+            
+            user["active"] = new_status
+            dialog.dismiss()
+            
+            action_text = "reativado" if new_status else "banido"
+            self.show_dialog("Sucesso", f"Usuário {action_text} com sucesso!")
+            
+        except Exception as e:
+            dialog.dismiss()
+            self.show_dialog("Erro", f"Erro ao alterar status do usuário: {str(e)}")
+    
+    def show_dialog(self, title, text):
+        dialog = MDDialog(
+            title=title,
+            text=text,
+            buttons=[MDFlatButton(text="OK", on_release=lambda x: dialog.dismiss())]
+        )
+        dialog.open()
+    
+    def go_back(self):
+        self.manager.current = 'dashboard'
+
+
 class SchoolSecurityApp(MDApp):
     """Aplicativo Principal"""
     
@@ -768,10 +1770,17 @@ class SchoolSecurityApp(MDApp):
         # Screen Manager
         sm = ScreenManager()
         
-        # Adicionar telas
+        # Adicionar todas as telas
         sm.add_widget(LoginScreen())
         sm.add_widget(RegisterScreen())
         sm.add_widget(DashboardScreen())
+        sm.add_widget(ReportsScreen())
+        sm.add_widget(NoticesScreen())
+        sm.add_widget(VisitorsScreen())
+        sm.add_widget(IncidentsScreen())
+        sm.add_widget(CampaignsScreen())
+        sm.add_widget(SecurityScreen())
+        sm.add_widget(SettingsScreen())
         
         return sm
 
