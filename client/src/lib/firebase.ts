@@ -1,6 +1,6 @@
 // Firebase configuration and initialization
 // Based on firebase_barebones_javascript integration
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { 
   getAuth, 
   signInWithEmailAndPassword,
@@ -35,8 +35,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase with HMR-safe initialization
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // Initialize Firebase services
 export const auth = getAuth(app);
@@ -92,6 +92,36 @@ export const onAuthStateChange = (callback: (user: FirebaseUser | null) => void)
   return onAuthStateChanged(auth, callback);
 };
 
+// User management functions (admin only)
+export const getAllUsers = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'users'));
+    const users: any[] = [];
+    querySnapshot.forEach((doc) => {
+      users.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    return users;
+  } catch (error) {
+    console.error('Error getting users:', error);
+    throw error;
+  }
+};
+
+export const updateUserRole = async (userId: string, newRole: string) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      role: newRole
+    });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    throw error;
+  }
+};
+
 // Push notifications - TODO: Implement after configuring Firebase Messaging
 export const requestNotificationPermission = async () => {
   console.log('Notification permission not yet configured');
@@ -143,12 +173,20 @@ export const getDocuments = async (
     q = query(q, orderBy(orderByField, orderDirection));
   }
   
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const querySnapshot = await getDocs(q);
+  const documents: any[] = [];
+  querySnapshot.forEach((doc) => {
+    documents.push({
+      id: doc.id,
+      ...doc.data()
+    });
+  });
+  return documents;
 };
 
 export const updateDocument = async (collectionName: string, docId: string, data: any) => {
-  await updateDoc(doc(db, collectionName, docId), {
+  const docRef = doc(db, collectionName, docId);
+  await updateDoc(docRef, {
     ...data,
     updatedAt: serverTimestamp(),
   });

@@ -95,10 +95,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userData: { name: string; role: UserRole }
   ) => {
     try {
+      // Security: Force all new users to be students
+      // Administrators can promote users later through admin panel
       await createUserDocument(firebaseUser.uid, {
         name: userData.name,
         email: firebaseUser.email!,
-        role: userData.role,
+        role: 'student' as UserRole, // Always create as student
         isActive: true,
       });
       

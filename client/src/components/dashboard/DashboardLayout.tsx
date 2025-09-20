@@ -71,7 +71,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     {
       title: 'Administração',
       items: [
-        { title: 'Gerenciar Usuários', url: '/admin/users', icon: Settings, roles: ['admin'] },
+        { title: 'Gerenciar Usuários', url: '/users', icon: Users, roles: ['admin'] },
         { title: 'Relatórios', url: '/admin/reports', icon: FileText, roles: ['admin'] },
       ]
     },

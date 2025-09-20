@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import AuthPage from "@/pages/AuthPage";
 import Dashboard from "@/pages/Dashboard";
 import ReportsPage from "@/pages/ReportsPage";
+import UsersPage from "@/pages/UsersPage";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -43,6 +44,12 @@ function Router() {
       <Route path="/reports" component={() => (
         <ProtectedRoute>
           <ReportsPage />
+        </ProtectedRoute>
+      )} />
+      
+      <Route path="/users" component={() => (
+        <ProtectedRoute>
+          <UsersPage />
         </ProtectedRoute>
       )} />
       

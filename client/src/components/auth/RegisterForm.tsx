@@ -18,7 +18,6 @@ const registerSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
   confirmPassword: z.string(),
-  role: z.enum(['student', 'staff', 'admin'] as const),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Senhas não coincidem',
   path: ['confirmPassword'],
@@ -41,17 +40,11 @@ export default function RegisterForm({ onSuccess, onLoginClick }: RegisterFormPr
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      role: 'student',
-    },
   });
 
-  const watchedRole = watch('role');
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
@@ -60,10 +53,11 @@ export default function RegisterForm({ onSuccess, onLoginClick }: RegisterFormPr
     try {
       const userCredential = await signUp(data.email, data.password, data.name);
       
-      // Initialize user document in Firestore
+      // Initialize user document in Firestore with default student role
+      // Administrators can promote users later through admin panel
       await initializeUser(userCredential.user, {
         name: data.name,
-        role: data.role as UserRole,
+        role: 'student' as UserRole,
       });
       
       onSuccess?.();
@@ -154,28 +148,13 @@ export default function RegisterForm({ onSuccess, onLoginClick }: RegisterFormPr
             )}
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="role">Tipo de Usuário</Label>
-            <Select onValueChange={(value) => setValue('role', value as UserRole)} defaultValue="student">
-              <SelectTrigger data-testid="select-role">
-                <SelectValue placeholder="Selecione seu tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="student">Aluno</SelectItem>
-                <SelectItem value="staff">Funcionário</SelectItem>
-                <SelectItem value="admin">Direção</SelectItem>
-              </SelectContent>
-            </Select>
-            {watchedRole && (
-              <p className="text-xs text-muted-foreground">
-                {getRoleDescription(watchedRole)}
-              </p>
-            )}
-            {errors.role && (
-              <p className="text-sm text-destructive" data-testid="error-role">
-                {errors.role.message}
-              </p>
-            )}
+          {/* Security Notice: All new users are registered as students by default.
+              Administrators can promote users through the admin panel. */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-md border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Tipo de Usuário:</strong> Aluno<br />
+              <span className="text-xs">Todos os novos usuários são registrados como alunos. Para acesso de funcionário ou administrador, entre em contato com a direção.</span>
+            </p>
           </div>
           
           <div className="space-y-2">

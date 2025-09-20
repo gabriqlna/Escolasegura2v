@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserReports, useAllReports, useUpdateReportStatus } from '@/hooks/useReports';
 import ReportForm from '@/components/reports/ReportForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -11,53 +12,12 @@ import { Link } from 'wouter';
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState('new');
   const { user, hasPermission } = useAuth();
+  
+  // Fetch reports data
+  const { data: userReports = [], isLoading: userReportsLoading } = useUserReports();
+  const { data: allReports = [], isLoading: allReportsLoading } = useAllReports();
+  const updateReportStatus = useUpdateReportStatus();
 
-  // Mock data for user's reports - TODO: replace with real data
-  const mockUserReports = [
-    {
-      id: '1',
-      type: 'bullying',
-      description: 'Estudante sendo intimidado no pátio...',
-      location: 'Pátio principal',
-      status: 'pending',
-      isAnonymous: false,
-      createdAt: new Date('2024-01-15T10:30:00'),
-    },
-    {
-      id: '2',
-      type: 'theft',
-      description: 'Material escolar desapareceu da mochila...',
-      location: 'Sala 15',
-      status: 'reviewed',
-      isAnonymous: true,
-      createdAt: new Date('2024-01-10T14:20:00'),
-    },
-  ];
-
-  // Mock data for all reports (admin view) - TODO: replace with real data
-  const mockAllReports = [
-    ...mockUserReports,
-    {
-      id: '3',
-      type: 'vandalism',
-      description: 'Pichação encontrada no banheiro...',
-      location: 'Banheiro 2º andar',
-      status: 'resolved',
-      isAnonymous: true,
-      createdAt: new Date('2024-01-12T09:15:00'),
-      reporterName: 'Anônimo',
-    },
-    {
-      id: '4',
-      type: 'fight',
-      description: 'Discussão que quase virou briga...',
-      location: 'Quadra esportiva',
-      status: 'pending',
-      isAnonymous: false,
-      createdAt: new Date('2024-01-14T16:45:00'),
-      reporterName: 'João Silva',
-    },
-  ];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -72,18 +32,25 @@ export default function ReportsPage() {
     }
   };
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = (category: string) => {
     const types: Record<string, string> = {
       bullying: 'Bullying',
       fight: 'Briga/Agressão',
       theft: 'Furto/Roubo',
       vandalism: 'Vandalismo',
+      drugs: 'Drogas',
+      weapons: 'Armas',
       other: 'Outros',
     };
-    return types[type] || type;
+    return types[category] || category;
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'Data não disponível';
+    
+    // Handle Firestore timestamp
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -95,6 +62,14 @@ export default function ReportsPage() {
 
   const handleReportSuccess = () => {
     setActiveTab('history');
+  };
+  
+  const handleStatusUpdate = async (reportId: string, newStatus: string) => {
+    try {
+      await updateReportStatus.mutateAsync({ reportId, status: newStatus });
+    } catch (error) {
+      console.error('Error updating report status:', error);
+    }
   };
 
   return (
@@ -148,7 +123,12 @@ export default function ReportsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {mockUserReports.length === 0 ? (
+              {userReportsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p>Carregando suas denúncias...</p>
+                </div>
+              ) : userReports.length === 0 ? (
                 <div className="text-center py-8">
                   <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">Nenhuma denúncia encontrada</h3>
@@ -162,7 +142,7 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {mockUserReports.map((report) => (
+                  {userReports.map((report) => (
                     <div
                       key={report.id}
                       className="p-4 border rounded-lg hover-elevate"
@@ -170,7 +150,7 @@ export default function ReportsPage() {
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <Badge variant="outline">{getTypeLabel(report.type)}</Badge>
+                          <Badge variant="outline">{getTypeLabel(report.category)}</Badge>
                           {getStatusBadge(report.status)}
                           {report.isAnonymous && (
                             <Badge variant="secondary" className="gap-1">
@@ -180,12 +160,13 @@ export default function ReportsPage() {
                           )}
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {formatDate(report.createdAt)}
+                          {formatDate(report.timestamp)}
                         </span>
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm line-clamp-2">{report.description}</p>
+                        <h4 className="text-sm font-medium">{report.title}</h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{report.description}</p>
                         {report.location && (
                           <p className="text-xs text-muted-foreground">
                             📍 {report.location}
@@ -207,15 +188,21 @@ export default function ReportsPage() {
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5" />
                   Todas as Denúncias
-                  <Badge variant="secondary">{mockAllReports.length}</Badge>
+                  <Badge variant="secondary">{allReports.length}</Badge>
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Painel administrativo para acompanhar todas as denúncias da escola
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {mockAllReports.map((report) => (
+                {allReportsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p>Carregando todas as denúncias...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {allReports.map((report) => (
                     <div
                       key={report.id}
                       className="p-4 border rounded-lg hover-elevate"
@@ -223,7 +210,7 @@ export default function ReportsPage() {
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <Badge variant="outline">{getTypeLabel(report.type)}</Badge>
+                          <Badge variant="outline">{getTypeLabel(report.category)}</Badge>
                           {getStatusBadge(report.status)}
                           {report.isAnonymous && (
                             <Badge variant="secondary" className="gap-1">
@@ -233,15 +220,16 @@ export default function ReportsPage() {
                           )}
                         </div>
                         <div className="text-right text-xs text-muted-foreground">
-                          <div>{formatDate(report.createdAt)}</div>
+                          <div>{formatDate(report.timestamp)}</div>
                           <div className="mt-1">
-                            {report.isAnonymous ? 'Anônimo' : (report as any).reporterName || user?.name}
+                            {report.isAnonymous ? 'Anônimo' : 'Usuário identificado'}
                           </div>
                         </div>
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm">{report.description}</p>
+                        <h4 className="text-sm font-medium">{report.title}</h4>
+                        <p className="text-sm text-muted-foreground">{report.description}</p>
                         {report.location && (
                           <p className="text-xs text-muted-foreground">
                             📍 {report.location}
@@ -254,19 +242,31 @@ export default function ReportsPage() {
                           Ver Detalhes
                         </Button>
                         {report.status === 'pending' && (
-                          <Button size="sm" data-testid={`button-review-${report.id}`}>
+                          <Button 
+                            size="sm" 
+                            data-testid={`button-review-${report.id}`}
+                            onClick={() => handleStatusUpdate(report.id, 'reviewed')}
+                            disabled={updateReportStatus.isPending}
+                          >
                             Marcar como Analisado
                           </Button>
                         )}
                         {report.status === 'reviewed' && (
-                          <Button size="sm" variant="default" data-testid={`button-resolve-${report.id}`}>
+                          <Button 
+                            size="sm" 
+                            variant="default" 
+                            data-testid={`button-resolve-${report.id}`}
+                            onClick={() => handleStatusUpdate(report.id, 'resolved')}
+                            disabled={updateReportStatus.isPending}
+                          >
                             Marcar como Resolvido
                           </Button>
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

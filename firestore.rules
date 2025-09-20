@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - strict access control
+    match /users/{userId} {
+      // Users can only read their own document
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can only create their own document with limited fields
+      allow create: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasAll(['name', 'email', 'role', 'isActive'])
+        && request.resource.data.role == 'student' // Only student role allowed on creation
+        && request.resource.data.isActive == true
+        && request.resource.data.email == request.auth.token.email;
+      
+      // Users can only update their own profile (limited fields)
+      allow update: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasAll(['name']) // Only name updates allowed
+        && request.resource.data.role == resource.data.role // Role cannot be changed by user
+        && request.resource.data.isActive == resource.data.isActive; // isActive cannot be changed by user
+      
+      // Only admins can change roles and active status (requires custom claims)
+      allow update: if request.auth != null 
+        && request.auth.token.admin == true;
+    }
+    
+    // Reports collection - controlled access
+    match /reports/{reportId} {
+      // Authenticated users can create reports
+      allow create: if request.auth != null
+        && (
+          // Anonymous reports (no reporterId set)
+          (!request.resource.data.keys().hasAny(['reporterId']) && request.resource.data.isAnonymous == true)
+          ||
+          // Identified reports (reporterId must match authenticated user)
+          (request.resource.data.reporterId == request.auth.uid && request.resource.data.isAnonymous == false)
+        )
+        && request.resource.data.keys().hasAll(['title', 'description', 'category', 'priority', 'isAnonymous', 'timestamp', 'status']);
+      
+      // Students can only read their own reports
+      allow read: if request.auth != null 
+        && (
+          resource.data.reporterId == request.auth.uid
+          || request.auth.token.staff == true
+          || request.auth.token.admin == true
+        );
+      
+      // Only staff and admins can update reports
+      allow update: if request.auth != null 
+        && (request.auth.token.staff == true || request.auth.token.admin == true);
+      
+      // Only admins can delete reports
+      allow delete: if request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // Emergency alerts collection - admin only
+    match /emergency_alerts/{alertId} {
+      allow read: if request.auth != null; // All authenticated users can read alerts
+      allow create, update, delete: if request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // Deny all other collections by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
