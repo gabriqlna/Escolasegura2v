@@ -27,8 +27,8 @@ source.exclude_dirs = tests, bin, .buildozer
 # (str) Versão do aplicativo
 version = 1.0
 
-# (list) Dependências do aplicativo
-requirements = python3,kivy,kivymd,requests,python-dateutil,pillow,plyer,certifi,charset-normalizer,idna,urllib3
+# (list) Dependências do aplicativo - versões pinnadas para estabilidade
+requirements = python3,kivy==2.2.1,kivymd==1.2.0,requests==2.31.0,python-dateutil==2.8.2,pillow==10.0.1,plyer==2.1.0,certifi,charset-normalizer,idna,urllib3,cython==0.29.36
 
 # (str) Arquitetura suportada (pode ser all, armeabi-v7a, arm64-v8a, x86, x86_64)
 android.archs = arm64-v8a, armeabi-v7a
