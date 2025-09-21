@@ -26,6 +26,12 @@ jobs:
       with:
         python-version: '3.10'
         
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        accept-android-sdk-licenses: true
+        packages: 'build-tools;34.0.0 platforms;android-33 cmdline-tools;latest'
+        
     - name: Install system dependencies
       run: |
         sudo apt-get update
@@ -60,7 +66,7 @@ jobs:
     - name: Install Python build dependencies
       run: |
         pip install --upgrade pip wheel 'setuptools<68'
-        pip install buildozer==1.5.0 cython==0.29.36 virtualenv python-for-android==2024.06.02
+        pip install buildozer==1.5.0 cython==0.29.36 virtualenv python-for-android==2024.1.21
         
     - name: Verify buildozer.spec
       run: |
@@ -69,32 +75,60 @@ jobs:
         
     - name: Initialize buildozer
       run: |
-        buildozer android clean
+        echo "Preparing buildozer environment..."
+        # Create necessary directories if they don't exist
+        mkdir -p ~/.buildozer
+        # Remove old NDK versions to avoid conflicts (NDK 25b required now)
+        rm -rf ~/.buildozer/android/platform/android-ndk-r23*
+        echo "Cleaned old NDK versions (25b minimum required)"
+        # Only clean if .buildozer directory already contains android platform
+        if [ -d ".buildozer/android/platform" ]; then
+          echo "Existing buildozer setup found, cleaning..."
+          buildozer android clean
+        else
+          echo "First time setup - skipping clean to avoid directory errors"
+        fi
         
     - name: Build APK
+      env:
+        APP_ANDROID_ACCEPT_SDK_LICENSE: 1
+        ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
       run: |
+        echo "Starting APK build process..."
+        echo "Android SDK Root: $ANDROID_SDK_ROOT"
+        echo "Available build-tools:"
+        ls -la $ANDROID_SDK_ROOT/build-tools/ || echo "Build-tools directory not found"
         buildozer -v android debug
         
     - name: List build output
       run: |
-        echo "Build completed. Listing bin directory:"
+        echo "Build completed. Listing all relevant files and directories:"
         ls -la bin/ || echo "No bin directory found"
+        ls -la .buildozer/ || echo "No .buildozer directory found"
+        ls -la buildozer.log || echo "No buildozer.log file found"
         find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
         
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
-      if: success()
+      if: success() && hashFiles('bin/*.apk') != ''
       with:
         name: escola-segura-apk
         path: bin/*.apk
         retention-days: 30
         
-    - name: Upload build logs
+    - name: Upload buildozer directory logs
       uses: actions/upload-artifact@v4
-      if: always()
+      if: always() && hashFiles('.buildozer/**/*') != ''
       with:
-        name: build-logs
-        path: |
-          .buildozer/
-          buildozer.log
+        name: buildozer-directory-logs
+        path: .buildozer/
+        retention-days: 7
+        
+    - name: Upload buildozer log file
+      uses: actions/upload-artifact@v4
+      if: always() && hashFiles('buildozer.log') != ''
+      with:
+        name: buildozer-log-file
+        path: buildozer.log
         retention-days: 7

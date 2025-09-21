@@ -58,7 +58,10 @@ android.api = 33
 android.minapi = 21
 
 # (str) NDK versão para usar
-android.ndk = 23b
+android.ndk = 25b
+
+# (str) Build Tools versão
+android.build_tools = 34.0.0
 
 # (str) SDK path (deixar em branco para usar o padrão)
 #android.sdk_path =
