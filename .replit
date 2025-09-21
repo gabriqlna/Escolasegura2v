@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["SDL2", "SDL2_image", "SDL2_mixer", "SDL2_ttf", "freetype", "lcms2", "libGL", "libcxx", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "mesa", "mtdev", "openjpeg", "pkg-config", "tcl", "tk", "zlib", "openjdk", "git", "zip", "unzip", "autoconf", "libtool", "ncurses", "cmake", "openssl"]
+packages = ["SDL2", "SDL2_image", "SDL2_mixer", "SDL2_ttf", "autoconf", "cmake", "freetype", "git", "lcms2", "libGL", "libcxx", "libimagequant", "libjpeg", "libtiff", "libtool", "libwebp", "libxcrypt", "mesa", "mtdev", "ncurses", "nmh", "openjdk", "openjpeg", "openssl", "pkg-config", "tcl", "tk", "unzip", "zip", "zlib"]
 
 [deployment]
 deploymentTarget = "autoscale"
