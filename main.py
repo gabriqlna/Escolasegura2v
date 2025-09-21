@@ -15,50 +15,74 @@ os.environ['KIVY_WINDOW'] = 'sdl2'
 os.environ['MESA_GL_VERSION_OVERRIDE'] = '3.3'
 os.environ['MESA_GLSL_VERSION_OVERRIDE'] = '330'
 
-# Adicionar configurações para evitar problemas de OpenGL
-import kivy
-kivy.require('2.1.0')
-from kivy.config import Config
-Config.set('graphics', 'multisamples', '0')
-Config.set('graphics', 'vsync', '0')
-Config.set('graphics', 'depth', '0')
-Config.set('graphics', 'stencil', '0')
-Config.set('graphics', 'double', '0')
-Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
+# Adicionar configurações para evitar problemas de OpenGL - imports opcionais
+try:
+    import kivy
+    kivy.require('2.1.0')
+    from kivy.config import Config
+    Config.set('graphics', 'multisamples', '0')
+    Config.set('graphics', 'vsync', '0')
+    Config.set('graphics', 'depth', '0')
+    Config.set('graphics', 'stencil', '0')
+    Config.set('graphics', 'double', '0')
+    Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
-from kivy.app import App
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.button import Button
-from kivy.uix.textinput import TextInput
-from kivy.uix.spinner import Spinner
-from kivy.uix.popup import Popup
-from kivy.uix.image import Image
-from kivy.clock import Clock
-from kivymd.app import MDApp
-from kivymd.uix.screen import MDScreen
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDRaisedButton, MDIconButton
-from kivymd.uix.textfield import MDTextField
-from kivymd.uix.card import MDCard
-from kivymd.uix.list import MDList, OneLineListItem
-from kivymd.uix.selectioncontrol import MDSwitch
-from kivymd.uix.label import MDLabel
-from kivymd.uix.navigationdrawer import MDNavigationDrawer
-from kivymd.uix.toolbar import MDTopAppBar
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.button import MDFlatButton
-from kivymd.uix.tab import MDTabsBase, MDTabs
-from kivymd.uix.floatlayout import MDFloatLayout
+    from kivy.app import App
+    from kivy.uix.screenmanager import ScreenManager, Screen
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.label import Label
+    from kivy.uix.button import Button
+    from kivy.uix.textinput import TextInput
+    from kivy.uix.spinner import Spinner
+    from kivy.uix.popup import Popup
+    from kivy.uix.image import Image
+    from kivy.clock import Clock
+    from kivymd.app import MDApp
+    from kivymd.uix.screen import MDScreen
+    from kivymd.uix.boxlayout import MDBoxLayout
+    from kivymd.uix.button import MDRaisedButton, MDIconButton
+    from kivymd.uix.textfield import MDTextField
+    from kivymd.uix.card import MDCard
+    from kivymd.uix.list import MDList, OneLineListItem
+    from kivymd.uix.selectioncontrol import MDSwitch
+    from kivymd.uix.label import MDLabel
+    from kivymd.uix.navigationdrawer import MDNavigationDrawer
+    from kivymd.uix.toolbar import MDTopAppBar
+    from kivymd.uix.dialog import MDDialog
+    from kivymd.uix.button import MDFlatButton
+    from kivymd.uix.tab import MDTabsBase, MDTabs
+    from kivymd.uix.floatlayout import MDFloatLayout
+    
+    KIVY_AVAILABLE = True
+except ImportError:
+    # Fallbacks para quando Kivy não está disponível
+    kivy = None
+    Config = None
+    App = object
+    ScreenManager = Screen = BoxLayout = Label = Button = object
+    TextInput = Spinner = Popup = Image = Clock = object
+    MDApp = MDScreen = MDBoxLayout = object
+    MDRaisedButton = MDIconButton = MDTextField = object
+    MDCard = MDList = OneLineListItem = MDSwitch = object
+    MDLabel = MDNavigationDrawer = MDTopAppBar = object
+    MDDialog = MDFlatButton = MDTabsBase = MDTabs = object
+    MDFloatLayout = object
+    
+    KIVY_AVAILABLE = False
 
-import firebase_admin
-from firebase_admin import credentials, auth as firebase_auth, firestore, messaging
-import pyrebase
+try:
+    import firebase_admin
+    from firebase_admin import credentials, auth as firebase_auth, firestore, messaging
+    import pyrebase
+    FIREBASE_AVAILABLE = True
+except ImportError:
+    firebase_admin = None
+    credentials = firebase_auth = firestore = messaging = object
+    pyrebase = None
+    FIREBASE_AVAILABLE = False
+
 from datetime import datetime
 import json
-import os
-from kivy.clock import Clock
 
 
 class FirebaseManager:
@@ -390,8 +414,11 @@ class RegisterScreen(MDScreen):
         )
         
         # Spinner para tipo de usuário
-        from kivymd.uix.menu import MDDropdownMenu
-        from kivymd.uix.button import MDRectangleFlatButton
+        try:
+            from kivymd.uix.menu import MDDropdownMenu
+            from kivymd.uix.button import MDRectangleFlatButton
+        except ImportError:
+            MDDropdownMenu = MDRectangleFlatButton = object
         
         self.user_type_button = MDRectangleFlatButton(
             text="Tipo de Usuário: Aluno",
@@ -517,7 +544,10 @@ class DashboardScreen(MDScreen):
     def build_dashboard(self):
         """Construir o dashboard"""
         # Layout principal com navigation drawer
-        from kivymd.uix.navigationdrawer import MDNavigationLayout, MDNavigationDrawer
+        try:
+            from kivymd.uix.navigationdrawer import MDNavigationLayout, MDNavigationDrawer
+        except ImportError:
+            MDNavigationLayout = MDNavigationDrawer = object
         
         self.nav_layout = MDNavigationLayout()
         
@@ -1536,8 +1566,11 @@ class SecurityScreen(MDScreen):
         self.build_screen()
     
     def build_screen(self):
-        from kivymd.uix.tab import MDTabs, MDTabsBase
-        from kivymd.uix.floatlayout import MDFloatLayout
+        try:
+            from kivymd.uix.tab import MDTabs, MDTabsBase
+            from kivymd.uix.floatlayout import MDFloatLayout
+        except ImportError:
+            MDTabs = MDTabsBase = MDFloatLayout = object
         
         layout = MDBoxLayout(orientation='vertical')
         
@@ -2104,4 +2137,12 @@ class SchoolSecurityApp(MDApp):
 
 
 if __name__ == '__main__':
-    SchoolSecurityApp().run()
+    # Só executar se Kivy estiver disponível e RUN_KIVY=1
+    if KIVY_AVAILABLE and os.getenv('RUN_KIVY') == '1':
+        SchoolSecurityApp().run()
+    else:
+        print("Sistema de Segurança Escolar - Versão Desktop")
+        print("Para executar a interface gráfica:")
+        print("  1. Instale as dependências: pip install kivy kivymd firebase-admin pyrebase4")
+        print("  2. Execute com: RUN_KIVY=1 python main.py")
+        print("Ou use: python terminal_app.py para versão terminal")
