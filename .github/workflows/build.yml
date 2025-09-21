@@ -28,12 +28,8 @@ jobs:
         
     - name: Install system dependencies
       run: |
-        sudo dpkg --add-architecture i386
         sudo apt-get update
         sudo apt-get install -y \
-          zlib1g:i386 \
-          libstdc++6:i386 \
-          libncurses5:i386 \
           libffi-dev \
           libssl-dev \
           zip \
@@ -42,7 +38,8 @@ jobs:
           libltdl-dev \
           autotools-dev \
           automake \
-          pkg-config
+          pkg-config \
+          git
           
     - name: Cache Buildozer global directory
       uses: actions/cache@v3
@@ -62,8 +59,8 @@ jobs:
           
     - name: Install Python build dependencies
       run: |
-        pip install --upgrade pip
-        pip install buildozer==1.5.0 cython==0.29.36 virtualenv
+        pip install --upgrade pip wheel 'setuptools<68'
+        pip install buildozer==1.5.0 cython==0.29.36 virtualenv python-for-android==2024.06.02
         
     - name: Verify buildozer.spec
       run: |
@@ -94,7 +91,7 @@ jobs:
         
     - name: Upload build logs
       uses: actions/upload-artifact@v4
-      if: failure()
+      if: always()
       with:
         name: build-logs
         path: |

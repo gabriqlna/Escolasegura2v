@@ -60,8 +60,8 @@ android.minapi = 21
 # (str) NDK versão para usar
 android.ndk = 23b
 
-# (str) SDK versão para usar
-android.sdk = 33
+# (str) SDK path (deixar em branco para usar o padrão)
+#android.sdk_path =
 
 # (str) ANT directory (deixar em branco para usar o padrão)
 #android.ant_path =

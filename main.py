@@ -109,6 +109,20 @@ class FirebaseManager:
     def initialize_firebase(self):
         """Inicializa o Firebase"""
         try:
+            # Verificar se Firebase está disponível
+            if not FIREBASE_AVAILABLE:
+                print("🔧 Firebase não disponível - usando modo demonstração")
+                self.auth = None
+                self.db = None
+                return
+            
+            # Verificar se temos configurações básicas
+            if not self.config.get("apiKey") or self.config["apiKey"] == "None":
+                print("🔧 Credenciais Firebase não configuradas - usando modo demonstração")
+                self.auth = None
+                self.db = None
+                return
+                
             # Inicializar Pyrebase para autenticação
             self.firebase = pyrebase.initialize_app(self.config)
             self.auth = self.firebase.auth()
