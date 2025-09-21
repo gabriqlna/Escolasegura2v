@@ -7,32 +7,47 @@ import os
 from datetime import datetime
 import json
 
-# Configurações básicas para Android
-from kivy.config import Config
-Config.set('graphics', 'resizable', False)
-Config.set('graphics', 'width', '360')
-Config.set('graphics', 'height', '640')
+# Configurações básicas para Android - imports opcionais para compatibilidade
+try:
+    from kivy.config import Config
+    Config.set('graphics', 'resizable', False)
+    Config.set('graphics', 'width', '360')
+    Config.set('graphics', 'height', '640')
 
-from kivy.app import App
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.button import Button
-from kivy.uix.textinput import TextInput
-from kivy.uix.spinner import Spinner
-from kivy.uix.popup import Popup
-from kivy.clock import Clock
+    from kivy.app import App
+    from kivy.uix.screenmanager import ScreenManager, Screen
+    from kivy.uix.boxlayout import BoxLayout
+    from kivy.uix.label import Label
+    from kivy.uix.button import Button
+    from kivy.uix.textinput import TextInput
+    from kivy.uix.spinner import Spinner
+    from kivy.uix.popup import Popup
+    from kivy.clock import Clock
 
-from kivymd.app import MDApp
-from kivymd.uix.screen import MDScreen
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDRaisedButton, MDIconButton, MDFlatButton
-from kivymd.uix.textfield import MDTextField
-from kivymd.uix.card import MDCard
-from kivymd.uix.list import MDList, OneLineListItem
-from kivymd.uix.label import MDLabel
-from kivymd.uix.toolbar import MDTopAppBar
-from kivymd.uix.dialog import MDDialog
+    from kivymd.app import MDApp
+    from kivymd.uix.screen import MDScreen
+    from kivymd.uix.boxlayout import MDBoxLayout
+    from kivymd.uix.button import MDRaisedButton, MDIconButton, MDFlatButton
+    from kivymd.uix.textfield import MDTextField
+    from kivymd.uix.card import MDCard
+    from kivymd.uix.list import MDList, OneLineListItem
+    from kivymd.uix.label import MDLabel
+    from kivymd.uix.toolbar import MDTopAppBar
+    from kivymd.uix.dialog import MDDialog
+    
+    KIVY_AVAILABLE = True
+except ImportError:
+    # Fallbacks para quando Kivy não está disponível (ex: Replit)
+    Config = None
+    App = object
+    ScreenManager = Screen = BoxLayout = Label = Button = object
+    TextInput = Spinner = Popup = Clock = object
+    MDApp = MDScreen = MDBoxLayout = object
+    MDRaisedButton = MDIconButton = MDFlatButton = object
+    MDTextField = MDCard = MDList = OneLineListItem = object
+    MDLabel = MDTopAppBar = MDDialog = object
+    
+    KIVY_AVAILABLE = False
 
 
 class LocalDataManager:
@@ -466,7 +481,10 @@ class DashboardScreen(MDScreen):
             admin_card = self.create_action_card("📊 Relatórios", "Ver denúncias e relatórios", self.open_admin)
             scroll_content.add_widget(admin_card)
         
-        from kivy.uix.scrollview import ScrollView
+        try:
+            from kivy.uix.scrollview import ScrollView
+        except ImportError:
+            ScrollView = object
         scroll = ScrollView()
         scroll.add_widget(scroll_content)
         main_layout.add_widget(scroll)
@@ -588,7 +606,10 @@ class ReportsScreen(MDScreen):
         self.anonymous_checkbox = BoxLayout(size_hint_y=None, height='40dp')
         self.anonymous_checkbox.add_widget(Label(text='Denúncia anônima?', size_hint_x=0.8))
         
-        from kivymd.uix.selectioncontrol import MDCheckbox
+        try:
+            from kivymd.uix.selectioncontrol import MDCheckbox
+        except ImportError:
+            MDCheckbox = object
         self.is_anonymous = MDCheckbox(size_hint_x=0.2)
         self.anonymous_checkbox.add_widget(self.is_anonymous)
         
@@ -702,7 +723,10 @@ class NoticesScreen(MDScreen):
             )
             notices_layout.add_widget(card)
         
-        from kivy.uix.scrollview import ScrollView
+        try:
+            from kivy.uix.scrollview import ScrollView
+        except ImportError:
+            ScrollView = object
         scroll = ScrollView()
         scroll.add_widget(notices_layout)
         main_layout.add_widget(scroll)
@@ -843,7 +867,10 @@ class AdminScreen(MDScreen):
                 )
                 stats_layout.add_widget(report_card)
         
-        from kivy.uix.scrollview import ScrollView
+        try:
+            from kivy.uix.scrollview import ScrollView
+        except ImportError:
+            ScrollView = object
         scroll = ScrollView()
         scroll.add_widget(stats_layout)
         main_layout.add_widget(scroll)
@@ -875,4 +902,12 @@ class SchoolSecurityApp(MDApp):
 
 
 if __name__ == '__main__':
-    SchoolSecurityApp().run()
+    # Só executar se Kivy estiver disponível e RUN_KIVY=1
+    if KIVY_AVAILABLE and os.getenv('RUN_KIVY') == '1':
+        SchoolSecurityApp().run()
+    else:
+        print("Sistema de Segurança Escolar - Versão Android")
+        print("Para executar a interface gráfica:")
+        print("  1. Instale as dependências: pip install kivy kivymd")
+        print("  2. Execute com: RUN_KIVY=1 python main_android.py")
+        print("Ou use: python terminal_app.py para versão terminal")
