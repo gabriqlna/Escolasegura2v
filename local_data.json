@@ -1,0 +1,27 @@
+{
+  "users": {
+    "admin@escola.com": {
+      "password": "admin123",
+      "name": "Administrador",
+      "user_type": "direcao",
+      "active": true
+    },
+    "aluno@escola.com": {
+      "password": "123456",
+      "name": "Aluno Exemplo",
+      "user_type": "aluno",
+      "active": true
+    }
+  },
+  "reports": [],
+  "notices": [
+    {
+      "title": "Simulado de Evacuação",
+      "content": "Simulado será realizado na próxima quinta-feira às 10h.",
+      "date": "2025-09-20",
+      "priority": "Alta"
+    }
+  ],
+  "visitors": [],
+  "incidents": []
+}

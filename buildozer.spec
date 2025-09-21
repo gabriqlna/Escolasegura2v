@@ -10,7 +10,7 @@ package.name = escolasegura
 package.domain = com.escola.seguranca
 
 # (str) Arquivo principal Python
-source.main = main_android.py
+source.main = main_android_fixed.py
 
 # (str) Diretórios de código fonte (onde estão os arquivos .py)
 source.dir = .
@@ -25,10 +25,10 @@ source.exclude_exts = spec
 source.exclude_dirs = tests, bin, .buildozer
 
 # (str) Versão do aplicativo
-version = 1.0
+version = 1.1
 
-# (list) Dependências do aplicativo - versões pinnadas para estabilidade
-requirements = python3,kivy==2.2.1,kivymd==1.2.0,requests==2.31.0,python-dateutil==2.8.2,pillow==10.0.1,plyer==2.1.0,certifi,charset-normalizer,idna,urllib3,cython==0.29.36
+# (list) Dependências do aplicativo - versões compatíveis com Android 15
+requirements = python3,kivy==2.0.0,kivymd==0.104.2,pillow,filelock,requests==2.31.0,python-dateutil==2.8.2,plyer==2.1.0,certifi,charset-normalizer,idna,urllib3
 
 # (str) Arquitetura suportada (pode ser all, armeabi-v7a, arm64-v8a, x86, x86_64)
 android.archs = arm64-v8a, armeabi-v7a
@@ -52,16 +52,22 @@ orientation = portrait
 fullscreen = 0
 
 # (int) API alvo Android
-android.api = 33
+android.api = 31
 
 # (int) API mínima Android
 android.minapi = 21
+
+# (bool) Aceitar licenças SDK automaticamente
+android.accept_sdk_license = True
 
 # (str) NDK versão para usar
 android.ndk = 25b
 
 # (str) Build Tools versão
 android.build_tools = 34.0.0
+
+# (list) Dependências Gradle para compatibilidade com Android 14
+android.gradle_dependencies = androidx.core:core:1.7.0
 
 # (str) SDK path (deixar em branco para usar o padrão)
 #android.sdk_path =
